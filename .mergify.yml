@@ -11,7 +11,7 @@ shared:
         - author = guillaume-flambard
     - label != hold-merge
     - label != needs-human-review
-    - "-files ~= ^(\\.github/|\\.mergify\\.yml$|CODEOWNERS$|AGENTS\\.md$|deploy/|ansible/|infra/|stacks/|\\.env)|(^|/)migrations/"
+    - "-files ~= ^(\\.github/|\\.mergify\\.yml$|CODEOWNERS$|AGENTS\\.md$|\\.env)"
     - "check-success = @github-actions/Core and integration tests"
 
 merge_queue:
