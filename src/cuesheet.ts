@@ -64,6 +64,7 @@ const COMMANDS: Record<string, CommandSpec> = {
     file: "cli-run.ts",
     about: "list the sessions stored on this machine",
     style: "subcommand",
+    usage: "cuesheet sessions [--format json] [--since <iso>] [--cwd <dir>]",
     sub: {
       list: { about: "list the sessions stored on this machine", usage: "cuesheet sessions list" },
     },
