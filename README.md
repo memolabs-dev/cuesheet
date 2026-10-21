@@ -71,10 +71,11 @@ git repository under `/tmp/.../srv/people/amina/work/projects`, and reads it
 without editing a line. That is the difference between portable and claimed
 portable.
 
-The install is still machine-local: `bin/cuesheet` points at
-`~/projects/tools/cuesheet`. That is INSTALLABLE-and-not-yet, and the test
-records it instead of hiding it. Making the shim resolve its root from the
-environment, and shipping an installer, is INSTALLABLE, which is not claimed.
+The shim names no machine either. Run from a checkout, `bin/cuesheet` finds
+the checkout it sits in; installed, it carries the runtime and node that
+`scripts/install.sh` wrote into it on the machine where it ran. PORT-03 asserts
+that the file in the repository holds no home directory and no project path.
+That is still short of INSTALLABLE for someone else, which is not claimed.
 
 ## Layout
 
@@ -96,7 +97,9 @@ src/verify.ts              whether the work counts, decided by something other t
 src/worker.ts              the first worker: deterministic, and unable to lie.
 src/projections.ts        one event log, two renderings: interactive, machine.
 src/cuesheet.ts           the installed command's dispatcher.
-bin/cuesheet              the PATH shim, copied to ~/.local/bin.
+src/adapters/session-reader.ts  the session listing other programs read. Writes nothing.
+bin/cuesheet              the PATH shim, installed by scripts/install.sh.
+scripts/install.sh        build, copy the runtime out of the checkout, install the shim.
 test/                     352 tests
 ```
 
@@ -170,9 +173,26 @@ what makes it usable as a sensor rather than something a human has to watch.
 In that output an unobserved project's `dirtyFiles` is `null` and its
 availability is `held`: never a `0` dressed up as an observation.
 
-To install it, copy `bin/cuesheet` to a directory on your PATH. The shim execs
-`src/cuesheet.ts` from this repository and is the only file that knows where
-the repo lives.
+To install it for your user, from a checkout with its dependencies installed:
+
+```bash
+pnpm install --frozen-lockfile
+scripts/install.sh
+```
+
+The script builds `dist/`, copies it to
+`${XDG_DATA_HOME:-~/.local/share}/cuesheet/runtime`, and writes the shim to
+`~/.local/bin/cuesheet` with two absolute paths filled in: that runtime, and
+the node found on PATH while installing. The runtime is a copy, so switching
+branches or removing the checkout changes nothing about the installed command,
+and the absolute node is what lets Finder, launchd or a hook run it with a bare
+PATH. The script does not finish until the installed command answers `--help`
+that way. `CUESHEET_RUNTIME`, `CUESHEET_BIN_DIR` and `CUESHEET_NODE` choose other
+locations; `CUESHEET_ROOT` and `CUESHEET_NODE` also override the installed shim
+at run time. Rerun the script to update: the runtime is replaced whole.
+
+Without installing, `bin/cuesheet` runs `src/cuesheet.ts` from the checkout it
+sits in.
 
 The raw entry points still work and are what the shim calls: `src/cli.ts`
 (ownership and the gate, flag-driven), `src/cli-run.ts` (sessions, subcommand
@@ -196,6 +216,89 @@ so the session survives its process. It needs `OPENROUTER_API_KEY`; there is
 no unauthenticated fallback, on purpose. Shadow mode, which observes real
 delegations without blocking them, lives in the OpenCode plugin in
 `plugin-opencode/`.
+
+## Reading sessions from another program
+
+`cuesheet sessions --format json` is the supported way for another program to
+read the sessions on a machine. The files behind it are not an interface and
+change without notice; this listing is versioned and changes only with its
+`version`.
+
+```bash
+cuesheet sessions --format json [--since <iso>] [--cwd <dir>]
+```
+
+It reads and writes nothing else: no directory is created, no file written, no
+writer's lock touched, so it is safe on a store the reader must not change. It
+lists both stores. Run and chat sessions live in `CUESHEET_SESSIONS`, else
+`~/.cuesheet/sessions`; terminal sessions in `CUESHEET_SESSIONS`, else
+`$XDG_STATE_HOME/cuesheet/terminal/sessions`, else
+`~/.local/state/cuesheet/terminal/sessions`.
+
+<!-- sessions-json:begin -->
+```json
+{
+  "version": 1,
+  "stores": [
+    { "kinds": ["run", "chat"], "path": "/home/amina/.cuesheet/sessions", "state": "read", "error": null },
+    { "kinds": ["terminal"], "path": "/home/amina/.local/state/cuesheet/terminal/sessions", "state": "absent", "error": null }
+  ],
+  "filters": { "since": null, "cwd": null },
+  "sessions": [
+    {
+      "id": "t-2f6c1d0e-9a4b-4c1e-8f3a-5b7d2e9c0a11",
+      "kind": "terminal",
+      "cwd": "/home/amina/work/atlas",
+      "createdAt": "2026-10-21T08:12:03.418Z",
+      "lastEventAt": "2026-10-21T09:40:55.002Z",
+      "events": 42,
+      "status": "open",
+      "damage": null,
+      "file": "/home/amina/.local/state/cuesheet/terminal/sessions/t-2f6c1d0e-9a4b-4c1e-8f3a-5b7d2e9c0a11.jsonl"
+    },
+    {
+      "id": "chat-001xntmuobq2cd",
+      "kind": "chat",
+      "cwd": null,
+      "createdAt": "2026-10-20T17:02:11.950Z",
+      "lastEventAt": null,
+      "events": 0,
+      "status": null,
+      "damage": null,
+      "file": "/home/amina/.cuesheet/sessions/chat-001xntmuobq2cd.jsonl"
+    }
+  ]
+}
+```
+<!-- sessions-json:end -->
+
+- `version` is `1`. A change a reader could notice gets a new number.
+- `stores` names each directory read. `state` is `read`, `absent` (nothing
+  there, and nothing created) or `unreadable`, with the error code in `error`.
+  An unreadable store is not an empty one. When `CUESHEET_SESSIONS` points both
+  writers at one directory, it appears once with all three kinds.
+- `sessions` holds one object per session, most recent activity first:
+  - `kind` is `run`, `chat` or `terminal`.
+  - `cwd` is the working directory the session recorded. Terminal sessions
+    record one; run and chat journals do not, so theirs is `null`.
+  - `createdAt` and `lastEventAt` are ISO 8601 in UTC. `createdAt` comes from
+    the terminal manifest or the first event, and for an empty log from the
+    file itself. `lastEventAt` is `null` for an empty log; for a terminal
+    session it is the later of the session journal and its conversation.
+  - `events` counts the events the journal attests. An empty log is listed
+    with `0`, never hidden.
+  - `status` is the goal state the core fold gives: `open`, `closed`, or `null`
+    when the log holds no goal.
+  - `damage` is `null`, or `{ "why", "line" }` saying where the journal stops
+    being readable (`unreadable`, `out_of_sequence`, `unreadable_file`), or what
+    a terminal session is missing (`metadata_missing`, `metadata_invalid`,
+    `journal_missing`). `events` then counts what was readable before it.
+  - `file` is the journal read. A terminal session also has
+    `<id>.meta.json` and `<id>.view.jsonl` beside it.
+- `--since <iso>` keeps sessions whose last activity (`lastEventAt`, else
+  `createdAt`) is at or after that instant. `--cwd <dir>` keeps sessions whose
+  `cwd` is that directory or inside it; `/srv/atlas` does not match
+  `/srv/atlas-old`, and a session with no `cwd` never matches.
 
 ## Not here yet, on purpose
 

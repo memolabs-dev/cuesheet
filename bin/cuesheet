@@ -1,16 +1,50 @@
 #!/bin/bash
 # cuesheet: the installed command. Thin by design.
 #
-# Everything it knows is in the repo it points at. This shim exists so the
-# command is on PATH without an npm link and without a build step, the same
-# way other personal commands on this machine are installed. The repo is found
-# from this file's own location, so moving it changes nothing here.
+# One file, two ways to run it:
+#
+#   from a checkout   bin/cuesheet runs src/cuesheet.ts from the checkout it sits in
+#   installed         scripts/install.sh copies this file onto PATH and fills in
+#                     the two values below: the built runtime it copied out of
+#                     the checkout, and the node it found while installing.
+#
+# Both values are absolute because a command started from Finder, launchd or a
+# hook gets a bare PATH: no nvm, no Homebrew, and no way to guess where node is.
+# Neither names a machine here; the installer writes them on the machine it runs
+# on. CUESHEET_ROOT and CUESHEET_NODE override both.
 set -euo pipefail
 
-CUESHEET_ROOT="${CUESHEET_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-if [ ! -f "$CUESHEET_ROOT/src/cuesheet.ts" ]; then
-  echo "cuesheet: entry point not found at $CUESHEET_ROOT" >&2
+INSTALLED_ROOT=""
+INSTALLED_NODE=""
+
+if [ -n "${CUESHEET_ROOT:-}" ]; then
+  root="$CUESHEET_ROOT"
+elif [ -n "$INSTALLED_ROOT" ]; then
+  root="$INSTALLED_ROOT"
+else
+  root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
+
+# A built runtime carries src/cuesheet.js; a checkout carries src/cuesheet.ts.
+if [ -f "$root/src/cuesheet.js" ]; then
+  entry="$root/src/cuesheet.js"
+elif [ -f "$root/src/cuesheet.ts" ]; then
+  entry="$root/src/cuesheet.ts"
+else
+  echo "cuesheet: entry point not found at $root; reinstall with scripts/install.sh from a checkout" >&2
   exit 1
 fi
 
-exec node "$CUESHEET_ROOT/src/cuesheet.ts" "$@"
+node="${CUESHEET_NODE:-}"
+if [ -z "$node" ] && [ -n "$INSTALLED_NODE" ] && [ -x "$INSTALLED_NODE" ]; then
+  node="$INSTALLED_NODE"
+fi
+if [ -z "$node" ]; then
+  node="$(command -v node || true)"
+fi
+if [ -z "$node" ]; then
+  echo "cuesheet: node not found on PATH; set CUESHEET_NODE or reinstall with scripts/install.sh" >&2
+  exit 1
+fi
+
+exec "$node" "$entry" "$@"
