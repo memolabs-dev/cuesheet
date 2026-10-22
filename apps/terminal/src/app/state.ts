@@ -148,6 +148,8 @@ export interface SurfaceState {
   readonly busy: boolean;
   readonly reasoning?:string;
   readonly progressKind?:"reasoning"|"text";
+  /** Cumulative consumption across the session, projected from usage receipts. */
+  readonly consumption?: { readonly inputTokens: number; readonly outputTokens: number; readonly requests: number; readonly costCents: number };
   /**
    * Every line this surface has ever put on the timeline, by identity,
    * including the ones the cap has since scrolled off the end.
@@ -224,6 +226,8 @@ export type Control =
    * that restarts on the next mount.
    */
   | { readonly type: "noted"; readonly entry: EntryBody }
+  /** Producer-only. Cumulative consumption updated from usage receipts. */
+  | { readonly type: "consumed"; readonly inputTokens: number; readonly outputTokens: number; readonly requests: number; readonly costCents: number }
   /** Producer-only. A line for the raw log, read only by inspect. */
   | { readonly type: "logged"; readonly line: string }
   /** Producer-only. The scope was resolved, one way or another. */
@@ -243,6 +247,7 @@ export const emptySurface: SurfaceState = {
   busy: false,
   seen: new Set<EntryId>(),
   minted: 0,
+  consumption: undefined,
 };
 
 /** Cap the timeline. A day of work is a long log and a terminal is not a scrollback. */
@@ -371,6 +376,18 @@ export function derive(state: SurfaceState, control: Control): SurfaceState {
       // keeps a repeated delivery from repainting a timeline that did not move.
       if (fresh.length === 0) return state;
       return { ...state, ...added(state, fresh) };
+    }
+
+    case "consumed": {
+      return {
+        ...state,
+        consumption: {
+          inputTokens: control.inputTokens,
+          outputTokens: control.outputTokens,
+          requests: control.requests,
+          costCents: control.costCents,
+        },
+      };
     }
 
     case "noted": {

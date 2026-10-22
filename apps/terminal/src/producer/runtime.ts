@@ -49,7 +49,7 @@ import { invocationKey } from "../../../../src/adapters/tool-receipts.ts";
 import { createToolRouteSelector,DEFAULT_CONTAINER_TOOLS } from "../../../../src/adapters/tool-route.ts";
 import { ContainerToolRunner } from "../../../../src/adapters/container-tools.ts";
 import { ResearchTools } from "../../../../src/adapters/research-tools.ts";
-import { SessionUsage } from "../../../../src/adapters/model-usage.ts";
+import { SessionUsage, type UsageReceipt } from "../../../../src/adapters/model-usage.ts";
 import { ProjectVaultPublisher } from "../../../../src/adapters/vault-publisher.ts";
 import { VaultRetrieval } from "../../../../src/adapters/vault.ts";
 import { SharedContexts,sharedScope } from "../../../../src/adapters/shared-memory.ts";
@@ -82,7 +82,7 @@ export function modelFor(cwd: string): { name: string; model: string | null; why
  * App gates task submission on binding.missing. A broken owner check still
  * refuses construction, because model selection cannot repair that check.
  */
-export function createLiveProducer(store: Store, cwd: string, settings: { journal?: TerminalSession; verification?: CompletionCheck; binding?: ModelBinding; identities?:ProducerOptions['identities'] } = {}): { producer: Producer; binding: ModelBinding } | { missing: string } {
+export function createLiveProducer(store: Store, cwd: string, settings: { journal?: TerminalSession; verification?: CompletionCheck; binding?: ModelBinding; identities?:ProducerOptions['identities']; onUsage?:(receipt:UsageReceipt)=>void } = {}): { producer: Producer; binding: ModelBinding } | { missing: string } {
   const projectsRoot=process.env.CUESHEET_PROJECTS_ROOT;
   if(projectsRoot!==undefined&&(!isAbsolute(projectsRoot)||/[\0\r\n]/.test(projectsRoot)))return {missing:"CUESHEET_PROJECTS_ROOT must be an absolute directory path."};
   let situation;try{situation=createSituation();}catch{return {missing:"Contexte de situation invalide : vérifier fuseau, langue et labels configurés."};}
@@ -91,7 +91,8 @@ export function createLiveProducer(store: Store, cwd: string, settings: { journa
   const maxSlices=process.env.CUESHEET_MAX_SLICES===undefined ? 4 : Number(process.env.CUESHEET_MAX_SLICES);
   if(!Number.isSafeInteger(maxSlices) || maxSlices<1 || maxSlices>16)return {missing:"CUESHEET_MAX_SLICES must be an integer from 1 to 16."};
   const usage=settings.journal ? new SessionUsage({root:settings.journal.root,sessionId:settings.journal.metadata.id,assertWritable:()=>settings.journal!.assertWritable()}) : undefined;
-  const binding = settings.binding ?? createModelBinding({ project: cwd,onUsage:usage?.record });
+  const onUsage=(receipt:UsageReceipt)=>{usage?.record(receipt);settings.onUsage?.(receipt);};
+  const binding = settings.binding ?? createModelBinding({ project: cwd,onUsage });
   const model: ModelAdapter = binding.adapter;
   const selectRoute=createToolRouteSelector({home:homedir(),enterprise:!!process.env.CUESHEET_CONTEXT_ROOTS?.split(delimiter).filter(Boolean).length,mode:process.env.CUESHEET_TOOL_MODE,image:process.env.CUESHEET_TOOL_IMAGE,socket:process.env.CUESHEET_TOOL_SOCKET});
   let verification;
@@ -117,7 +118,7 @@ export function createLiveProducer(store: Store, cwd: string, settings: { journa
   const agentModel=(selection:import('../../../../src/adapters/model-preferences.ts').ModelPreferences,scope:string)=>{const resolved=resolveModel({project:scope,preferences:{},env:agentCredentials,provider:selection.provider,model:selection.model??null,baseUrl:selection.baseUrl,maxTokens:selection.maxTokens,onUsage:usage?.record});if('missing' in resolved)throw Error(resolved.missing);return {adapter:resolved.adapter,label:`${resolved.name} · ${resolved.model??"modèle configuré"}`};};
   const toolsForWorker=(scope:string,journal:TerminalSession,signal:AbortSignal):ToolRunner=>{const runner=toolsForScope(scope,journal);return Object.assign({run:(request:Parameters<ToolRunner["run"]>[0])=>(runner as ToolRunner&{run(request:Parameters<ToolRunner["run"]>[0],signal?:AbortSignal):ReturnType<ToolRunner["run"]>}).run(request,signal)},{names:(runner as ToolRunner&{names?:readonly string[]}).names??[]});};
   const workerModel=(scope:string)=>agentModel(binding.selection,scope);
-  const options: ProducerOptions = {identities:settings.identities,projectsRoot,toolsForWorker,workerModel,worktreeRoot:settings.journal?join(settings.journal.root,"workspaces",settings.journal.metadata.id):undefined,situation,agentModel,modelLabel:()=>binding.label,vaultPublisherForScope,vaultForScope,toolsForScope,researchForScope,skillsForScope,sharedContexts, store, journal: settings.journal, model, tools, cwd, toolNames: ALLOWED, verification, contextBudgetChars, research, skills, maxSlices };
+  const options: ProducerOptions = {identities:settings.identities,onUsage,projectsRoot,toolsForWorker,workerModel,worktreeRoot:settings.journal?join(settings.journal.root,"workspaces",settings.journal.metadata.id):undefined,situation,agentModel,modelLabel:()=>binding.label,vaultPublisherForScope,vaultForScope,toolsForScope,researchForScope,skillsForScope,sharedContexts, store, journal: settings.journal, model, tools, cwd, toolNames: ALLOWED, verification, contextBudgetChars, research, skills, maxSlices };
   return { producer: createProducer(options), binding };
 }
 /** Acquire storage before building any live adapter. Loading never starts work. */
@@ -138,8 +139,16 @@ export function createTerminalRuntime(cwd: string, id?: string): { store: Store;
     }
     const store = persistentView(session);
     const usage=new SessionUsage({root:session.root,sessionId:session.metadata.id,assertWritable:()=>session!.assertWritable()});
-    const binding = createModelBinding({project:session.metadata.cwd,preferences:session.lastModel,onUsage:usage.record});
-    const live = createLiveProducer(store,session.metadata.cwd,{journal:session,verification,binding});
+    const notifySurface = (): void => {
+      const requests=usage.read();
+      let inputTokens=0,outputTokens=0,observed=0;
+      for(const r of requests){if(r.status!=="observed")continue;observed+=1;inputTokens+=r.inputTokens??0;outputTokens+=r.outputTokens??0;}
+      const costCents=Math.round((inputTokens*0.3+outputTokens*1.5)/1000);
+      store.send({type:"consumed",inputTokens,outputTokens,requests:observed,costCents});
+    };
+    const onUsage=(receipt:UsageReceipt)=>{usage.record(receipt);notifySurface();};
+    const binding = createModelBinding({project:session.metadata.cwd,preferences:session.lastModel,onUsage});
+    const live = createLiveProducer(store,session.metadata.cwd,{journal:session,verification,binding,onUsage});
     if("missing" in live) throw new Error(live.missing);
     if(!binding.missing) live.producer.modelSelected?.(binding.selection);
     store.send({type:"logged",line:`[session] ${session.metadata.id} ${session.metadata.cwd}`});

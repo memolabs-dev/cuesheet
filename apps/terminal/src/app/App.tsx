@@ -310,6 +310,7 @@ export function App(props: AppProps): JSX.Element {
         overlay={state.overlay}
         targeted={!!reference}
         notifications={producer?.notificationCount?.()??0}
+        consumption={state.consumption}
         width={column}
         entries={state.entries}
         busy={state.busy}

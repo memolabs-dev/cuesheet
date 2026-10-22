@@ -91,6 +91,7 @@ import {inspectCodeWorkerRecovery,reconcileCodeWorkerRecovery,setAsideCodeWorker
 import { type ModelAdapter, type ToolRunner, type LoopOptions } from "../../../../src/core/loop.ts";
 import { ModelSelectionChanged } from "../../../../src/adapters/model-binding.ts";
 import type { ModelPreferences } from "../../../../src/adapters/model-preferences.ts";
+import type { UsageReceipt } from "../../../../src/adapters/model-usage.ts";
 import { projectEffectAttempts, mutationTool, invocationKey, completeAttempt, reconcileEffect } from "../../../../src/adapters/tool-receipts.ts";
 import { runExecutionSlices } from "../../../../src/adapters/execution-slices.ts";
 import { EventStore, type Event } from "../../../../src/core/store.ts";
@@ -158,6 +159,13 @@ export interface ProducerOptions {
    * `projectsRoot`, once per launch.
    */
   readonly identities?: readonly ProjectIdentity[];
+  /**
+   * Notified whenever a model usage receipt is observed, so the surface can
+   * show cumulative consumption (tokens, estimated cost). The receipt's
+   * `phase` is `"started"` or `"observed"`; only `observed` receipts carry
+   * token counts.
+   */
+  readonly onUsage?: (receipt: UsageReceipt) => void;
 }
 
 /** What a run needs, assembled here so the loop call site is one line. */
@@ -232,6 +240,27 @@ export function createProducer(options: ProducerOptions): Producer {
   const now = options.now ?? (() => Date.now());
   const mint = options.mintId ?? (() => defaultMintId(now()));
   const send = (control: Control): void => view.send(control);
+
+  /** Cumulative consumption, projected from observed usage receipts.
+   *
+   * `costCents` is an estimate at reference rates (≈0.3¢/1K input, ≈1.5¢/1K
+   * output). It is labelled "est." on the surface so it is never mistaken for
+   * an invoice.
+   */
+  let consumption = { inputTokens: 0, outputTokens: 0, requests: 0, costCents: 0 };
+  const notifyConsumption = (): void => {
+    send({ type: "consumed", ...consumption });
+  };
+  const observeUsage = (receipt: UsageReceipt): void => {
+    if (receipt.phase !== "observed") return;
+    consumption.requests += 1;
+    consumption.inputTokens += receipt.inputTokens ?? 0;
+    consumption.outputTokens += receipt.outputTokens ?? 0;
+    consumption.costCents = Math.round(
+      (consumption.inputTokens * 0.3 + consumption.outputTokens * 1.5) / 1000,
+    );
+    notifyConsumption();
+  };
 
   // Read the registry once. Naming a project costs a registry read and no git
   // (`src/adapters/project-binding.ts:78`), and doing it per sentence would make
@@ -896,6 +925,7 @@ if(request.name==="inspect_code_workers"){
       recordObserved(`failed: ${why}`);
     } finally {
       inFlight = false;
+      notifyConsumption();
       send({ type: "ended" });
     }
   };
