@@ -65,6 +65,7 @@ export function organizeWork(store: EventStore, request: ToolRequest): ToolResul
   } else if (request.name === "create_skill") {
     if (typeof input.name !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(input.name) || !text(input.instructions)) return refuse("Invalid skill name or instructions.");
     const events = store.toSession().events;
+    if (projectOrganization(events).skills.some(s => s.name === input.name)) return refuse("Skill with this name already exists.");
     if (!Array.isArray(input.sources) || input.sources.length === 0 || input.sources.length > 20 || !input.sources.every(seq => typeof seq === "number" && events.some(event => event.seq === seq))) return refuse("A reusable skill must name existing source event sequences.");
     data = { operation: "skill", name: input.name, instructions: input.instructions, rationale: input.rationale, sources: input.sources, against: basis };
   } else if (request.name === "describe_objective") {

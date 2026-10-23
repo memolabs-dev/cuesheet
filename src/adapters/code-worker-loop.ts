@@ -23,7 +23,7 @@ export async function runCodeWorker(options: {
   contributionReady?(): Promise<boolean>;
   append(event: NewEvent): Event;
 }): Promise<CodeWorkerResult> {
-  let steps=0, effectPending=false;
+  let steps=0, effectPending=false, consecutiveFailures=0;
   const allowed=new Set(options.allow.filter(name=>!forbidden.has(name)));
   if(options.consult)allowed.add('consult_agents');
   const current=()=>!options.signal.aborted&&options.current();
@@ -62,6 +62,10 @@ export async function runCodeWorker(options: {
         options.append({kind:'observation',subject:'terminal.code-worker-supervision',data:{exit:126,output:diagnostic}});
         if(steps===options.maxSteps)return outcome('failed',diagnostic);
         continue;
+      }
+      // 90% budget warning: notify the controller before the last tool-capable call
+      if(steps >= Math.ceil(0.9 * options.maxSteps)){
+        options.append({kind:'observation',subject:'terminal.supervision',data:{type:'budgetWarning',message:'90% of inference budget reached'}});
       }
       if(response.toolCalls.length===0){
         if(options.contributionReady){
@@ -104,6 +108,8 @@ export async function runCodeWorker(options: {
         if(!current())return stale();
         if(ready)return outcome('proposal','Controller candidate criteria passed; integration and source verification remain pending.');
       }
+      // Heartbeat: signal worker is still alive and making progress
+      options.append({kind:'note',subject:'terminal.work.heartbeat',data:{step:steps, maxSteps:options.maxSteps, task: options.worker.packet.task}});
     }
     return outcome('exhausted',`The ${options.maxSteps}-inference budget was exhausted; inspect the preserved workspace and receipts. No completion was established.`);
   }catch(error){return effectPending?outcome('uncertain','An admitted effect or its receipt is unconfirmed. Inspect the private journal before retrying.'):!current()?stale():outcome('failed',error instanceof ProviderProposalRefused?error.message:timedOut?`The provider did not answer within ${inferenceTimeoutMs}ms. The inference was cancelled; completed effects and the private workspace remain preserved.`:'Worker inference or journal publication failed. Earlier completed effects remain preserved in the private journal; inspect them before retrying. No completion was established.');}
