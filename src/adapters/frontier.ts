@@ -33,8 +33,12 @@ import { buildFrontier, wakeable } from "../core/memory.ts";
  */
 export const DEFAULT_PROJECTS_ROOT = (()=>{try{return process.env["MEMOLABS_ROOT"] || join(homedir(),"memolabs");}catch{return "";}})();
 
-/** The five categories the registry groups projects into. */
-const CATEGORIES = ["products", "tools", "infrastructure", "experiments", "clients"];
+/**
+ * The top-level directories of the registry root since the 2026-10-14 layout. The
+ * undeclared scan also walks the first segment of every registry path, so a
+ * layout that adds a directory is covered as soon as the registry names it.
+ */
+const TOP_LEVEL = ["os", "lab", "products", "research", "clients", "studio"];
 
 export interface FrontierOptions {
   /** Where the registry root is. Defaults to `$MEMOLABS_ROOT`, else `~/memolabs`. */
@@ -135,6 +139,12 @@ export interface PortfolioSnapshot {
   free: string[];
   /** A project is held when there is unfinished or unpushed work. */
   held: string[];
+  /**
+   * The PROJECTS.md that was read, or null when the root has none. An absent
+   * registry and a registry that declares nothing both give zero projects; this
+   * is what tells them apart.
+   */
+  registry?: string | null;
 }
 
 /**
@@ -150,8 +160,13 @@ export function snapshotPortfolio(options: FrontierOptions = {}): PortfolioSnaps
 
   const declared = new Set(projects.map((p) => p.entry.path));
 
+  const categories = new Set(TOP_LEVEL);
+  for (const e of entries) {
+    const first = e.path.split("/")[0];
+    if (first && first !== "." && first !== "..") categories.add(first);
+  }
   const presentButUndeclared: string[] = [];
-  for (const category of CATEGORIES) {
+  for (const category of categories) {
     const dir = join(projectsRoot, category);
     if (!existsSync(dir)) continue;
     for (const name of readdirSync(dir)) {
@@ -179,6 +194,7 @@ export function snapshotPortfolio(options: FrontierOptions = {}): PortfolioSnaps
     presentButUndeclared,
     free,
     held,
+    registry: existsSync(join(projectsRoot, "PROJECTS.md")) ? join(projectsRoot, "PROJECTS.md") : null,
   };
 }
 

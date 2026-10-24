@@ -177,7 +177,7 @@ describe("PORT-02 adapters take their roots from the caller", () => {
   });
 });
 
-describe("PORT-03 the shim is machine-local, and says so", () => {
+describe("PORT-03 the shim names no machine; the installer writes the machine in", () => {
   const shim = read(join(ROOT, "bin", "cuesheet")) ?? "";
 
   it("exists and is executable", () => {
@@ -185,12 +185,16 @@ describe("PORT-03 the shim is machine-local, and says so", () => {
     assert.ok(statSync(path).mode & 0o111, "the shim must be executable");
   });
 
-  it("hardcodes this machine's checkout, which is allowed only here", () => {
-    // This is the one known machine-local path in the repository, and it is
-    // outside core. It is asserted rather than tolerated: if it ever moves to
-    // src/, PORT-01 fails and the reason is legible.
+  it("names no machine path; the installer fills in this machine's", () => {
+    // It used to hardcode a checkout under the author's home, which was then
+    // removed, and every installed call failed. The checkout is now found from
+    // the shim's own location, and an installed copy carries the runtime and
+    // node that scripts/install.sh wrote into it on the machine it ran on.
     assert.match(shim, /CUESHEET_ROOT/);
-    assert.match(shim, /cuesheet\/src\/cuesheet\.ts|src\/cuesheet\.ts/);
+    assert.match(shim, /src\/cuesheet\.ts/);
+    assert.match(shim, /^INSTALLED_ROOT=""$/m);
+    assert.match(shim, /^INSTALLED_NODE=""$/m);
+    assert.doesNotMatch(shim, /\/Users\/|\/home\/|~\/projects|\$HOME\/projects/);
   });
 
   it("can be pointed at another checkout through the environment", () => {

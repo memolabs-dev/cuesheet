@@ -9,7 +9,7 @@
       "sourceRefs": [
         {
           "path": "src/adapters/project-binding.ts",
-          "digest": "b78c133049853a4c3dbf759895ecf4d6d4d21425e84cf822226c520f74ffba47"
+          "digest": "fd96b319098ab2d6a01de2bb0f9d40c193246ff00639b22502c19e0cc96bf7b4"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -41,7 +41,7 @@
       "sourceRefs": [
         {
           "path": "src/cuesheet.ts",
-          "digest": "50d323d5b5b757bab49525c826bc5094f1fc0267ecc3dcdce1becfd2e841f384"
+          "digest": "dcb2776636a57bc2d0baa99b01dfd6d55c116068887d05f72af27a9b045ced64"
         },
         {
           "path": "src/index.ts",
@@ -125,7 +125,7 @@
       "sourceRefs": [
         {
           "path": "src/adapters/session-store.ts",
-          "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+          "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -229,7 +229,7 @@
       "sourceRefs": [
         {
           "path": "src/adapters/session-store.ts",
-          "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+          "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
         },
         {
           "path": "src/adapters/terminal-session.ts",
@@ -285,7 +285,7 @@
       "sourceRefs": [
         {
           "path": "apps/terminal/src/producer/index.ts",
-          "digest": "9669dd06c8d5ea4b8093208d4df5e14ad6c68f82f5cfe0dc81bd0453fd252683"
+          "digest": "cdf97860bcbc2a893e1313711a250a532c303a859041b506f30bbb1d96f2eff4"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -301,7 +301,7 @@
       "sourceRefs": [
         {
           "path": "src/adapters/project-binding.ts",
-          "digest": "b78c133049853a4c3dbf759895ecf4d6d4d21425e84cf822226c520f74ffba47"
+          "digest": "fd96b319098ab2d6a01de2bb0f9d40c193246ff00639b22502c19e0cc96bf7b4"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -337,7 +337,7 @@
       "sourceRefs": [
         {
           "path": "src/cuesheet.ts",
-          "digest": "50d323d5b5b757bab49525c826bc5094f1fc0267ecc3dcdce1becfd2e841f384"
+          "digest": "dcb2776636a57bc2d0baa99b01dfd6d55c116068887d05f72af27a9b045ced64"
         },
         {
           "path": "src/index.ts",
@@ -431,7 +431,7 @@
       "sourceRefs": [
         {
           "path": "src/adapters/session-store.ts",
-          "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+          "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -501,7 +501,7 @@
       "sourceRefs": [
         {
           "path": "src/adapters/code-worker-loop.ts",
-          "digest": "ed3281a941338c613f9f3ba9f0a16bd60779c0143b7a739067ac71c456c8412d"
+          "digest": "25bd34ab0a1ccaf7bb05d2f65a3df66cd66fc17f821c44fd386e260d5e312554"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -571,7 +571,7 @@
       "sourceRefs": [
         {
           "path": "src/adapters/project-binding.ts",
-          "digest": "b78c133049853a4c3dbf759895ecf4d6d4d21425e84cf822226c520f74ffba47"
+          "digest": "fd96b319098ab2d6a01de2bb0f9d40c193246ff00639b22502c19e0cc96bf7b4"
         },
         {
           "path": "test/project-binding.test.ts",
@@ -663,7 +663,7 @@
         },
         {
           "path": "test/portability.test.ts",
-          "digest": "4c26d51067d804ba766e6590a632c43db044d7d2225cf1a26c04fb8763859db3"
+          "digest": "d13e6e53040ce1421566443aa159b58f5ebfc540ef14e9d4a0ba7228d11c1aff"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -795,7 +795,7 @@
         },
         {
           "path": "test/terminal-sessions.test.ts",
-          "digest": "852719ebe06f986e97c334cb44d3d7a28c641de1ab24028a8265bc2b85248029"
+          "digest": "ba39828bb60938cfeb0893b2fc63ef91e18b5c063284c2f6b14a1bab72a9175a"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -813,11 +813,11 @@
       "sourceRefs": [
         {
           "path": "src/adapters/session-store.ts",
-          "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+          "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
         },
         {
           "path": "test/terminal-sessions.test.ts",
-          "digest": "852719ebe06f986e97c334cb44d3d7a28c641de1ab24028a8265bc2b85248029"
+          "digest": "ba39828bb60938cfeb0893b2fc63ef91e18b5c063284c2f6b14a1bab72a9175a"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -1072,7 +1072,7 @@
       "sourceRefs": [
         {
           "path": "test/portability.test.ts",
-          "digest": "4c26d51067d804ba766e6590a632c43db044d7d2225cf1a26c04fb8763859db3"
+          "digest": "d13e6e53040ce1421566443aa159b58f5ebfc540ef14e9d4a0ba7228d11c1aff"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -1165,7 +1165,7 @@
       "sourceRefs": [
         {
           "path": "test/terminal-sessions.test.ts",
-          "digest": "852719ebe06f986e97c334cb44d3d7a28c641de1ab24028a8265bc2b85248029"
+          "digest": "ba39828bb60938cfeb0893b2fc63ef91e18b5c063284c2f6b14a1bab72a9175a"
         }
       ],
       "ownerRef": "owner.cuesheet",
@@ -1300,7 +1300,7 @@
       "dependency": "entity.integration.producer",
       "sourceRef": {
         "path": "apps/terminal/src/producer/index.ts",
-        "digest": "9669dd06c8d5ea4b8093208d4df5e14ad6c68f82f5cfe0dc81bd0453fd252683"
+        "digest": "cdf97860bcbc2a893e1313711a250a532c303a859041b506f30bbb1d96f2eff4"
       }
     },
     {
@@ -1310,7 +1310,7 @@
       "dependency": "entity.integration.project_binding",
       "sourceRef": {
         "path": "src/adapters/project-binding.ts",
-        "digest": "b78c133049853a4c3dbf759895ecf4d6d4d21425e84cf822226c520f74ffba47"
+        "digest": "fd96b319098ab2d6a01de2bb0f9d40c193246ff00639b22502c19e0cc96bf7b4"
       }
     },
     {
@@ -1410,7 +1410,7 @@
       "dependency": "entity.sessions.journal",
       "sourceRef": {
         "path": "src/adapters/session-store.ts",
-        "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+        "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
       }
     },
     {
@@ -1460,7 +1460,7 @@
       "dependency": "entity.workers.loop",
       "sourceRef": {
         "path": "src/adapters/code-worker-loop.ts",
-        "digest": "ed3281a941338c613f9f3ba9f0a16bd60779c0143b7a739067ac71c456c8412d"
+        "digest": "25bd34ab0a1ccaf7bb05d2f65a3df66cd66fc17f821c44fd386e260d5e312554"
       }
     },
     {
@@ -1550,7 +1550,7 @@
       "dependency": "entity.integration.project_binding",
       "sourceRef": {
         "path": "src/adapters/project-binding.ts",
-        "digest": "b78c133049853a4c3dbf759895ecf4d6d4d21425e84cf822226c520f74ffba47"
+        "digest": "fd96b319098ab2d6a01de2bb0f9d40c193246ff00639b22502c19e0cc96bf7b4"
       }
     },
     {
@@ -1580,7 +1580,7 @@
       "dependency": "entity.sessions.journal",
       "sourceRef": {
         "path": "src/adapters/session-store.ts",
-        "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+        "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
       }
     },
     {
@@ -1730,7 +1730,7 @@
       "dependency": "contract.integration.binding",
       "sourceRef": {
         "path": "src/adapters/project-binding.ts",
-        "digest": "b78c133049853a4c3dbf759895ecf4d6d4d21425e84cf822226c520f74ffba47"
+        "digest": "fd96b319098ab2d6a01de2bb0f9d40c193246ff00639b22502c19e0cc96bf7b4"
       }
     },
     {
@@ -1790,7 +1790,7 @@
       "dependency": "contract.sessions.store",
       "sourceRef": {
         "path": "src/adapters/session-store.ts",
-        "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+        "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
       }
     },
     {
@@ -1830,7 +1830,7 @@
       "dependency": "invariant.integration.ambiguity",
       "sourceRef": {
         "path": "src/adapters/project-binding.ts",
-        "digest": "b78c133049853a4c3dbf759895ecf4d6d4d21425e84cf822226c520f74ffba47"
+        "digest": "fd96b319098ab2d6a01de2bb0f9d40c193246ff00639b22502c19e0cc96bf7b4"
       }
     },
     {
@@ -1960,7 +1960,7 @@
       "dependency": "invariant.sessions.refusal",
       "sourceRef": {
         "path": "src/adapters/session-store.ts",
-        "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+        "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
       }
     },
     {
@@ -1970,7 +1970,7 @@
       "dependency": "contract.sessions.store",
       "sourceRef": {
         "path": "src/adapters/session-store.ts",
-        "digest": "267f46f3cb695843b18521ed40c2d272945ce83d9e9ed4a0695454263aa38b05"
+        "digest": "82a280a33d139ed2f958ce7f661710d40380aac41b38c24e8aa58bdabb2a2893"
       }
     },
     {

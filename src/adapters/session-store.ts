@@ -171,6 +171,66 @@ const errnoOf = (err: unknown): string | undefined =>
     ? String((err as { code?: unknown }).code)
     : undefined;
 
+/**
+ * What one journal file attests, read without touching anything else.
+ *
+ * The same reading `SessionStore.attest` gives, for a caller that must not
+ * construct a store: the constructor creates its root, and a reader that
+ * creates directories is not a reader. Opens the file for reading and nothing
+ * more.
+ */
+export function attestJournal(file: string): AttestedLog {
+  let raw: string;
+  try {
+    raw = readFileSync(file, "utf8");
+  } catch (err) {
+    const code = errnoOf(err);
+    // A session that was never created is not damage. It is the honest
+    // reading the rest of this class already gives an absent file.
+    if (code === "ENOENT") return { events: [], damage: null };
+    return { events: [], damage: { why: "unreadable_file", code: code ?? "unknown" } };
+  }
+
+  const rows = raw.split("\n").filter((line) => line.trim().length > 0);
+  const events: Event[] = [];
+  let lastSeq: number | undefined;
+  for (const [index, row] of rows.entries()) {
+    const linesAfter = rows.length - index - 1;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(row);
+    } catch {
+      return {
+        events,
+        damage: { why: "unreadable", line: index + 1, linesAfter, claims: null },
+      };
+    }
+    const seq = (parsed as { seq?: unknown }).seq;
+    if (typeof seq !== "number" || !Number.isInteger(seq)) {
+      // Valid JSON that is not an event, or an event with no sequence. Either
+      // way it names no position, so the run ends here rather than guessing
+      // where the author meant it to be.
+      return {
+        events,
+        damage: { why: "out_of_sequence", line: index + 1, linesAfter, claims: null },
+      };
+    }
+    // The first line defines where the run starts; every line after it has to
+    // be the next one. A duplicate and a hole are the same finding with a
+    // different sign, and both mean the sequence a decision compared against
+    // no longer names the line it named on disk.
+    if (lastSeq !== undefined && seq !== lastSeq + 1) {
+      return {
+        events,
+        damage: { why: "out_of_sequence", line: index + 1, linesAfter, claims: seq },
+      };
+    }
+    events.push(parsed as Event);
+    lastSeq = seq;
+  }
+  return { events, damage: null };
+}
+
 /** One file per session, so a corrupt session costs one session, not all. */
 export class SessionStore {
   private readonly root: string;
@@ -214,56 +274,7 @@ export class SessionStore {
    * asked what survived has to be given the part that did, and that is this.
    */
   attest(sessionId: string): AttestedLog {
-    const file = this.path(sessionId);
-    let raw: string;
-    try {
-      raw = readFileSync(file, "utf8");
-    } catch (err) {
-      const code = errnoOf(err);
-      // A session that was never created is not damage. It is the honest
-      // reading the rest of this class already gives an absent file.
-      if (code === "ENOENT") return { events: [], damage: null };
-      return { events: [], damage: { why: "unreadable_file", code: code ?? "unknown" } };
-    }
-
-    const rows = raw.split("\n").filter((line) => line.trim().length > 0);
-    const events: Event[] = [];
-    let lastSeq: number | undefined;
-    for (const [index, row] of rows.entries()) {
-      const linesAfter = rows.length - index - 1;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(row);
-      } catch {
-        return {
-          events,
-          damage: { why: "unreadable", line: index + 1, linesAfter, claims: null },
-        };
-      }
-      const seq = (parsed as { seq?: unknown }).seq;
-      if (typeof seq !== "number" || !Number.isInteger(seq)) {
-        // Valid JSON that is not an event, or an event with no sequence. Either
-        // way it names no position, so the run ends here rather than guessing
-        // where the author meant it to be.
-        return {
-          events,
-          damage: { why: "out_of_sequence", line: index + 1, linesAfter, claims: null },
-        };
-      }
-      // The first line defines where the run starts; every line after it has to
-      // be the next one. A duplicate and a hole are the same finding with a
-      // different sign, and both mean the sequence a decision compared against
-      // no longer names the line it named on disk.
-      if (lastSeq !== undefined && seq !== lastSeq + 1) {
-        return {
-          events,
-          damage: { why: "out_of_sequence", line: index + 1, linesAfter, claims: seq },
-        };
-      }
-      events.push(parsed as Event);
-      lastSeq = seq;
-    }
-    return { events, damage: null };
+    return attestJournal(this.path(sessionId));
   }
 
   /** The one place a damaged journal becomes an exception, with its reason. */
