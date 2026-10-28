@@ -95,4 +95,59 @@ describe("extractSkillRequirements", () => {
     const r = extractSkillRequirements("No skills here, just work.");
     assert.deepEqual(r.requirements, []);
   });
+
+  // cuesheet#77. French writes the name after the keyword, "utiliser la skill
+  // `x`", which none of the English patterns reach. 726 passages in the local
+  // brief corpus mention a skill; the forms below were chosen by reading what
+  // each candidate pattern extracts from them, not by widening until the
+  // French sentence passed.
+  it("a French instruction to use a skill is a directive requirement", () => {
+    const r = extractSkillRequirements(
+      "Tu dois utiliser la skill `adversarial-qa` avant de merger.",
+    );
+    assert.deepEqual(
+      r.requirements.map((q) => q.name),
+      ["adversarial-qa"],
+    );
+    assert.equal(r.matches[0].directive, true);
+  });
+
+  it("a French mention beside the keyword is a requirement with lower confidence", () => {
+    const r = extractSkillRequirements("La skill `humanizer` couvre les règles de voix.");
+    assert.deepEqual(
+      r.requirements.map((q) => q.name),
+      ["humanizer"],
+    );
+    assert.equal(r.matches[0].directive, false);
+  });
+
+  it("a word after the keyword that is not quoted is prose, not a name", () => {
+    // Measured: 568 of those 726 passages carry a word right after "skill",
+    // and the words are ordinary text, "de" included. The quoted form is the
+    // one that names a skill.
+    const r = extractSkillRequirements(
+      "Il faut utiliser la skill de session avant de merger.",
+    );
+    assert.deepEqual(r.requirements, []);
+  });
+
+  it("a negated naming declares the opposite, so it is not a requirement", () => {
+    // cuesheet#77: this sentence manufactured a requirement named `here`,
+    // inside the gate's own sensor, before any verdict was joined to it.
+    const r = extractSkillRequirements("There is no skill named here at all.");
+    assert.deepEqual(r.requirements, []);
+  });
+
+  it("a negated instruction is not a requirement either", () => {
+    assert.deepEqual(
+      extractSkillRequirements("Do not use the `destructive-verb` skill here.")
+        .requirements,
+      [],
+    );
+    assert.deepEqual(
+      extractSkillRequirements("Ne pas utiliser la skill `destructive-verb` ici.")
+        .requirements,
+      [],
+    );
+  });
 });
