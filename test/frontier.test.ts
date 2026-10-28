@@ -11,6 +11,7 @@ import {
   snapshotPortfolio,
 } from "../src/adapters/frontier.ts";
 import type { DurableObject } from "../src/core/memory.ts";
+import { childEnv } from "./fixtures/hermetic-env.ts";
 
 const obj = (over: Partial<DurableObject> = {}): DurableObject => ({
   id: "o1",
@@ -130,6 +131,48 @@ describe("snapshotPortfolio", () => {
       assert.ok(s.declaredButMissing.includes("ghost"), "a declared but absent repository is named");
     } finally {
       p.dispose();
+    }
+  });
+
+  it("tells an absent registry apart from one that declares nothing (#78)", () => {
+    const base = mkdtempSync(join(tmpdir(), "cuesheet-frontier-noreg-"));
+    try {
+      const s = snapshotPortfolio({ projectsRoot: base });
+      assert.equal(s.projects.length, 0);
+      assert.equal(s.registry, null, "no PROJECTS.md is reported as such");
+      writeFileSync(join(base, "PROJECTS.md"), "| Name | Path | Kind | Status | Nature | Stack |\n|---|---|---|---|---|---|\n");
+      assert.equal(snapshotPortfolio({ projectsRoot: base }).registry, join(base, "PROJECTS.md"));
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it("scans the current top level and every registry segment for undeclared repositories (#78)", () => {
+    const p = disposablePortfolio([["clean-repo", "tools/clean-repo", { remote: true }]]);
+    try {
+      mkdirSync(join(p.projectsRoot, "research", "stray", ".git"), { recursive: true });
+      mkdirSync(join(p.projectsRoot, "tools", "other", ".git"), { recursive: true });
+      const s = snapshotPortfolio({ projectsRoot: p.projectsRoot });
+      assert.ok(s.presentButUndeclared.includes("research/stray"), "a current top-level directory is walked");
+      assert.ok(s.presentButUndeclared.includes("tools/other"), "a directory the registry names is walked");
+      assert.ok(!s.presentButUndeclared.includes("tools/clean-repo"), "a declared repository is not reported");
+    } finally {
+      p.dispose();
+    }
+  });
+
+  it("the generator refuses to publish when the registry is absent (#78)", () => {
+    const base = mkdtempSync(join(tmpdir(), "cuesheet-frontier-cli-"));
+    try {
+      const r = spawnSync(process.execPath, ["src/frontier-cli.ts", join(base, "objects.md")], {
+        encoding: "utf8",
+        env: { ...childEnv({ home: base, sessions: base }), MEMOLABS_ROOT: base },
+      });
+      assert.notEqual(r.status, 0, "it exits with an error");
+      assert.match(r.stderr, /refusing to publish an empty portfolio/);
+      assert.equal(r.stdout, "", "nothing is published");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
     }
   });
 });

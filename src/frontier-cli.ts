@@ -11,6 +11,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
+  DEFAULT_PROJECTS_ROOT,
   buildSnapshotFrontier,
   renderFrontier,
   snapshotPortfolio,
@@ -124,8 +125,16 @@ function parseObjects(file: string): {
   return { objects, measured };
 }
 export function frontierMarkdown(objectsFile: string): string {
-  const { objects, measured } = parseObjects(objectsFile);
   const snapshot = snapshotPortfolio();
+  // Refuse loudly, as parseObjects does on an unknown key: a frontier with an
+  // empty portfolio and current-looking findings is worse than no frontier.
+  if (snapshot.registry === null) {
+    throw new Error(
+      `No PROJECTS.md under ${DEFAULT_PROJECTS_ROOT}: refusing to publish an empty portfolio. ` +
+        "Set MEMOLABS_ROOT to the registry root.",
+    );
+  }
+  const { objects, measured } = parseObjects(objectsFile);
   const { frontier, unevaluable } = buildSnapshotFrontier({ objects, measured, snapshot });
   const woken = wakeable(objects, measured);
   return renderFrontier(frontier, snapshot, unevaluable, woken);

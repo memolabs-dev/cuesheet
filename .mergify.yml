@@ -1,40 +1,28 @@
-# CANDIDATE ONLY: never install before exclusive-controller verification.
-# Target: memolabs-dev/cuesheet. Refresh cutoff immediately before activation.
+# Memo Labs autoloop merge policy: memolabs-dev/memo-bridge docs/MERGIFY_FLEET_ADOPTION.md.
+# A green PR from a trusted author lands without a human. Sensitive paths wait for the owner;
+# the "Mergify Merge Queue" check on the PR names the condition that blocks it.
+shared:
+  land_conditions: &land_conditions
+    - base = main
+    - -draft
+    - -from-fork
+    - or:
+        - author = memo-labs-automation[bot]
+        - author = guillaume-flambard
+    - label != hold-merge
+    - label != needs-human-review
+    - "-files ~= ^(\\.github/|\\.mergify\\.yml$|CODEOWNERS$|AGENTS\\.md$|\\.env)"
+    - "check-success = @github-actions/Core and integration tests"
+
 merge_queue:
   max_parallel_checks: 1
 
 merge_protections_settings:
-  auto_merge_conditions:
-    - "base = main"
-    - "-draft"
-    - "-from-fork"
-    - "author = memo-labs-automation[bot]"
-    - "created-at >= 2026-10-16T19:24:06Z"
-    - "label != hold-merge"
-    - "label != needs-human-review"
-    - "#files <= 8"
-    - "#added-lines <= 400"
-    - "#deleted-lines <= 150"
-    - "-files ~= ^(\\.github/|\\.mergify\\.yml$|\\.gitlab/|\\.circleci/|\\.env|\\.npmrc$|\\.pypirc$|\\.cargo/|AGENTS\\.md$|CODEOWNERS$|Dockerfile|Containerfile|Makefile$|Justfile$|server/|bridge/|plugin/|src/|app/|apps/|lib/|pkg/|cmd/|internal/|packages/|ios/|android/|native/|backend/|frontend/|web/|mobile/|deploy/|deployment/|docker/|infra/|infrastructure/|ansible/|terraform/|stacks/|scripts/|tests/|test/|__tests__/|config/|configs/|secrets/|migrations/|database/|db/|\\.changeset/|package\\.json$|pnpm-lock\\.yaml$|yarn\\.lock$|package-lock\\.json$|Cargo\\.(toml|lock)$|Package\\.swift$|go\\.(mod|sum)$|pyproject\\.toml$|requirements.*\\.txt$|.*\\.(ts|tsx|js|jsx|mjs|cjs|rs|swift|py|go|sh|bash|zsh|tf|tfvars|yml|yaml|json|toml|xml|plist)$)"
-    - "check-success = @github-actions/Core and integration tests"
+  auto_merge_conditions: *land_conditions
 
 queue_rules:
-  - name: memo-labs-safe-auto
+  - name: memo-labs-autoloop
     batch_size: 1
     merge_method: squash
-    queue_conditions: &safe_auto_conditions
-      - "base = main"
-      - "-draft"
-      - "-from-fork"
-      - "author = memo-labs-automation[bot]"
-      - "created-at >= 2026-10-16T19:24:06Z"
-      - "label != hold-merge"
-      - "label != needs-human-review"
-      - "#files <= 8"
-      - "#added-lines <= 400"
-      - "#deleted-lines <= 150"
-      - "-files ~= ^(\\.github/|\\.mergify\\.yml$|\\.gitlab/|\\.circleci/|\\.env|\\.npmrc$|\\.pypirc$|\\.cargo/|AGENTS\\.md$|CODEOWNERS$|Dockerfile|Containerfile|Makefile$|Justfile$|server/|bridge/|plugin/|src/|app/|apps/|lib/|pkg/|cmd/|internal/|packages/|ios/|android/|native/|backend/|frontend/|web/|mobile/|deploy/|deployment/|docker/|infra/|infrastructure/|ansible/|terraform/|stacks/|scripts/|tests/|test/|__tests__/|config/|configs/|secrets/|migrations/|database/|db/|\\.changeset/|package\\.json$|pnpm-lock\\.yaml$|yarn\\.lock$|package-lock\\.json$|Cargo\\.(toml|lock)$|Package\\.swift$|go\\.(mod|sum)$|pyproject\\.toml$|requirements.*\\.txt$|.*\\.(ts|tsx|js|jsx|mjs|cjs|rs|swift|py|go|sh|bash|zsh|tf|tfvars|yml|yaml|json|toml|xml|plist)$)"
-      - "check-success = @github-actions/Core and integration tests"
-    merge_conditions: *safe_auto_conditions
-
-
+    queue_conditions: *land_conditions
+    merge_conditions: *land_conditions

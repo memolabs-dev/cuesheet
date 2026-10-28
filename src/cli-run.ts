@@ -18,6 +18,7 @@ import { EventStore, type Event } from "../src/core/store.ts";
 import { SkillsAdapter, type SkillListing } from "../src/adapters/skills.ts";
 import { resolveModel } from "../src/adapters/default-model.ts";
 import { SessionStore } from "../src/adapters/session-store.ts";
+import { listSessions, sessionRoots } from "../src/adapters/session-reader.ts";
 import { ShellToolRunner } from "../src/adapters/shell.ts";
 import { isEntryPoint } from "./is-entry-point.ts";
 
@@ -42,8 +43,10 @@ function usage(): never {
 
   cuesheet resume <session> --in <dir> [--max-steps N]
 
-  cuesheet sessions
-      list the sessions stored on this machine
+  cuesheet sessions [--format json] [--since <iso>] [--cwd <dir>]
+      list the sessions stored on this machine; --format json lists run, chat
+      and terminal sessions in the versioned shape the README documents, and
+      writes nothing
 
   cuesheet inspect <session>
       replay a session log and print what the log actually shows
@@ -225,13 +228,21 @@ async function cmdResume(argv: string[]): Promise<number> {
   return 0;
 }
 
-function cmdSessions(): number {
-  const durable = new SessionStore({ root: SESSION_ROOT });
+function cmdSessions(argv: string[]): number {
+  const flags = parseArgs(argv);
+  const format = flags.format ?? "text";
+  if (format !== "text" && format !== "json") fail(`--format must be text or json, not ${format}`);
+  if (format === "json") return cmdSessionsJson(flags);
+  if (flags.since || flags.cwd) fail("--since and --cwd filter the JSON listing: add --format json");
+
   const dir = SESSION_ROOT;
+  // Checked before the store exists, because constructing one creates its root
+  // and a listing has no business creating anything.
   if (!existsSync(dir)) {
     console.log("no sessions yet");
     return 0;
   }
+  const durable = new SessionStore({ root: SESSION_ROOT });
   const files = execFileSync("ls", [dir], { encoding: "utf8" })
     .split("\n")
     .filter((f) => f.endsWith(".jsonl"));
@@ -270,6 +281,25 @@ function cmdSessions(): number {
   if (damaged > 0) {
     console.log(`\n${damaged} session(s) damaged. cuesheet inspect <id> for what survived.`);
   }
+  return 0;
+}
+
+/**
+ * The listing for programs: both stores, one object per session, read only.
+ *
+ * This is the interface the README documents for readers outside this
+ * repository. It opens files for reading and nothing else, so a reader can run
+ * it against a store it must not change.
+ */
+function cmdSessionsJson(flags: Record<string, string>): number {
+  let since: Date | undefined;
+  if (flags.since) {
+    since = new Date(flags.since);
+    if (Number.isNaN(since.getTime())) fail(`--since needs an ISO 8601 date, not ${flags.since}`);
+  }
+  if (flags.cwd === "true") fail("--cwd needs a directory");
+  const listing = listSessions(sessionRoots(), { since, cwd: flags.cwd });
+  console.log(JSON.stringify(listing, null, 2));
   return 0;
 }
 
@@ -318,7 +348,7 @@ async function main(): Promise<number> {
     case "resume":
       return cmdResume(rest);
     case "sessions":
-      return cmdSessions();
+      return cmdSessions(rest[0] === "list" ? rest.slice(1) : rest);
     case "inspect":
       return cmdInspect(rest);
     case "capabilities":
