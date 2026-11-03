@@ -44,7 +44,10 @@
     "journey": "node scripts/ui/journey.mjs",
     "journey:model": "node scripts/ui/journey002.mjs",
     "journey:live": "node scripts/ui/journey003.mjs",
-    "journey:recovery": "node scripts/ui/journey004.mjs"
+    "journey:recovery": "node scripts/ui/journey004.mjs",
+    "prepare": "sh scripts/install-git-hooks.sh",
+    "hooks:install": "sh scripts/install-git-hooks.sh",
+    "check:staged": "node scripts/check-staged-syntax.mjs"
   },
   "workspaces": [
     "apps/*"
