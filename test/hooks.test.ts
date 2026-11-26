@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { childEnv } from './fixtures/hermetic-env.ts';
 
 const sourceRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -12,7 +13,9 @@ function run(root, command, args, extraEnv = {}) {
   return spawnSync(command, args, {
     cwd: root,
     encoding: 'utf8',
-    env: { ...process.env, CI: '', ...extraEnv },
+    // Named environment only (test/hermeticity.test.ts): the child gets PATH, a throwaway HOME
+    // and no git config from the machine, never the developer's keys.
+    env: { ...childEnv({ home: root, sessions: root }), GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', CI: '', ...extraEnv },
   });
 }
 
